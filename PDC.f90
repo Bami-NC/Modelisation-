@@ -105,7 +105,7 @@ SUBROUTINE Calcul()
               F5=vitesse*rho*S1*Ceau*(T1(Mt)-Tamb)
           END IF
 
-          !Bilan sur le PER
+          !Bilan sur le PER )
           T2(m)=dt*(F3+F4+F6+F7)/(rho*Ceau*V2)+T2(m)
           !Bilan sur l'écoulement
           T1(m)=dt*(F1+F2+F5+F6)/(rho*Ceau*V1)+T1(m)
