@@ -40,7 +40,7 @@ compteur=0
 compteur2=0
 attente=0  !Par défaut indique que la température seuil n'a pas été atteinte
 
-OPEN(FICH2,FILE="result_PDC2.f90", ACTION="WRITE", STATUS="UNKNOWN");
+OPEN(FICH2,FILE="result_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2,*)
 CLOSE(FICH2)
 
@@ -105,7 +105,7 @@ SUBROUTINE Calcul()
           END IF
 
           !Flux conducto-convectifs
-          F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat2)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
+          F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
           !Flux avec la résistance cylindrique correspondant à l'isolant
           F7=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambdaMCP*dx)
@@ -117,7 +117,7 @@ SUBROUTINE Calcul()
               F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
           END IF
 
-          F8=Slat2*(T3(m)-T2(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP))
+          F8=Slat2*(T2(m)-T3(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP))
 
           !Bilan sur le PER
           T2(m)=dt*(F3+F4+F6-F8)/(rhop*Cper*V2)+T2(m)
@@ -148,13 +148,13 @@ SUBROUTINE Calcul()
         CALL export()
         compteur=0
         !PRINT*, "F1=",F1,"F3=",F3,"F2=",F2,"F4=",F4,"F5=",F5,"F6=",F6
+        PRINT*, "F8=",F8,"F9=",F9,"F10=",F10
       END IF
 
     END DO
     !--------------FIN DE LA BOUCLE DE TEMPS---------------------
 END SUBROUTINE
 
-! Routine de calcul de h en fonction de T
 FUNCTION calcH(T)
 	IMPLICIT NONE
 	DOUBLE PRECISION, INTENT(IN) :: T
@@ -173,7 +173,6 @@ FUNCTION calcH(T)
 	ENDIF
 END FUNCTION
 
-! Routine de calcul de T en fonction de h
 FUNCTION calcT(h)
 	IMPLICIT NONE
 	DOUBLE PRECISION, INTENT(IN) :: h
@@ -191,7 +190,6 @@ FUNCTION calcT(h)
 	ENDIF
 END FUNCTION
 
-! Routine de calcul de Y en fonction de h
 FUNCTION calcY(h)
 	IMPLICIT NONE
 	DOUBLE PRECISION, INTENT(IN) :: h
@@ -281,27 +279,16 @@ END SUBROUTINE Discretisation
 SUBROUTINE export()
 	IMPLICIT NONE
 
-	OPEN(FICH2,FILE="result_PDC2.f90", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+	OPEN(FICH2,FILE="result_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données
   ! ------------------------------------------------------------------------------------
 
-    WRITE(FICH2,*) 'temps=', temps, 'Valeur n°', nb, 'au niveau de l épaisseur'
+    WRITE(FICH2,*) 'temps=', temps
     DO i=1,Mt
-      WRITE(FICH2,*) T3(i)
+      WRITE(FICH2,*) i*dx, T1(i), T2(i), T3(i)
     END DO
-    WRITE(FICH2,*) '---------------------------------------------------------'
-
-    DO i=1,Mt
-      WRITE(FICH2,*) T2(i)
-    END DO
-    WRITE(FICH2,*) '---------------------------------------------------------'
-
-    DO i=1,Mt
-      WRITE(FICH2,*) T1(i)
-    END DO
-    WRITE(FICH2,*) '---------------------------------------------------------'
 
   CLOSE(FICH2)
 END SUBROUTINE export

@@ -1,0 +1,31 @@
+size 20 20
+
+set font texcmr hei 0.5 just tc
+
+begin graph
+      size 15 10
+
+      xtitle "x" hei 0.5 dist 0.4
+
+      ytitle "Température" hei 0.35 dist 0.35
+
+      data "result_PDC.txt"
+
+      key pos br compact
+
+      d1 line color red
+
+      d2 line color blue
+
+      xaxis min 0 max 5
+      yaxis min 18 max 65
+
+      title "t=500\ s"
+
+      begin key
+        position tr
+        offset 0.2 0.2
+        text "Température de l'ECS" fill blue
+        text "Température du PER"  fill red
+      end key
+end graph

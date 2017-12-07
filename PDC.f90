@@ -36,7 +36,7 @@ compteur=0
 compteur2=0
 attente=0  !Par défaut indique que la température seuil n'a pas été atteinte
 
-OPEN(FICH2,FILE="result_PDC.f90", ACTION="WRITE", STATUS="UNKNOWN");
+OPEN(FICH2,FILE="result_PDC.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2,*)
 CLOSE(FICH2)
 
@@ -94,7 +94,7 @@ SUBROUTINE Calcul()
           END IF
 
           !Flux conducto-convectifs
-          F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat2)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
+          F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
           !Flux avec la résistance cylindrique correspondant à l'isolant
           F7=(T2(m)-Tamb)/(1/(hair*Slat3)+log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx))
@@ -116,6 +116,7 @@ SUBROUTINE Calcul()
       IF (T1(Mt)>28 .AND. compteur2==0) THEN
           attente=temps
           compteur2=1
+          vitesse=0 !dès qu'on atteint 28 on coupe l'ECS pour observer le refroidissement
       END IF
 
       temps=temps+dt
@@ -194,22 +195,16 @@ END SUBROUTINE Discretisation
 SUBROUTINE export()
 	IMPLICIT NONE
 
-	OPEN(FICH2,FILE="result_PDC.f90", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+	OPEN(FICH2,FILE="result_PDC.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données
   ! ------------------------------------------------------------------------------------
-
-    WRITE(FICH2,*) 'temps=', temps, 'Valeur n°', nb, 'au niveau de l épaisseur'
+    !WRITE(FICH2,*) 'temps=', temps
+    !WRITE(FICH2,*) 'temps=', temps, 'Valeur n°', nb, 'au niveau de l épaisseur'
     DO i=1,Mt
-      WRITE(FICH2,*) T2(i)
+      WRITE(FICH2,*) i*dx,",",T1(i),",",T2(i),","
     END DO
-    WRITE(FICH2,*) '---------------------------------------------------------'
-
-    DO i=1,Mt
-      WRITE(FICH2,*) T1(i)
-    END DO
-    WRITE(FICH2,*) '---------------------------------------------------------'
 
   CLOSE(FICH2)
 END SUBROUTINE export
