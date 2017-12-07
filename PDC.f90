@@ -7,7 +7,7 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------
 INTEGER, PARAMETER:: FICH=125
 INTEGER, PARAMETER:: FICH2=126
-DOUBLE PRECISION, PARAMETER:: Pi=3.14
+DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
 INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
@@ -48,7 +48,7 @@ CALL Discretisation()
 PRINT*,'Discrétisation.........................OK'
 
 !Contrainte sur le pas de temps
-PRINT*, "Il faut:", anint(vitesse*S1*dt), "<<", anint(V2)
+PRINT*, "Il faut:", vitesse*S1*dt, "<<", V2
 PRINT*, "Sinon l'hypothèse que la température dans l'écoulement reste constante"
 PRINT*, "en un temps dt n'est pas vérifiée."
 !-----------------------------------------------------------------------------------------
@@ -160,7 +160,6 @@ SUBROUTINE load()
   !Propriété de l'ECS en écoulement
   READ(FICH,*) vitesse
 	READ(FICH,*) rho
-  READ(FICH,*) rhop
   READ(FICH,*) Ceau
   READ(FICH,*) Cper
   READ(FICH,*) lambda1
@@ -168,6 +167,7 @@ SUBROUTINE load()
 
   !Propriété du PER
   READ(FICH,*) lambda2
+  READ(FICH,*) rhop
 
   !Propriétés de l'isolant et de l'air
   READ(FICH,*) lambda3
@@ -185,7 +185,7 @@ SUBROUTINE Discretisation
   S1=pi*rayon**2
   S2=pi*((epaisseur2+rayon)**2-rayon**2)
   Slat1=2*pi*rayon*dx
-  Slat2=2*pi*(rayon+epaisseur2/2)*dx
+  Slat2=2*pi*(rayon+epaisseur2)*dx
   Slat3=2*pi*(rayon+epaisseur2+epaisseur3)*dx
   V1=S1*dx
   V2=S2*dx
