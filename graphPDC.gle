@@ -3,6 +3,7 @@ size 20 20
 set font texcmr hei 0.5 just tc
 
 begin graph
+      title "t=500\ s"
       size 15 10
 
       xtitle "x" hei 0.5 dist 0.4
@@ -19,8 +20,6 @@ begin graph
 
       xaxis min 0 max 5
       yaxis min 18 max 65
-
-      title "t=500\ s"
 
       begin key
         position tr
