@@ -8,11 +8,12 @@ IMPLICIT NONE
 INTEGER, PARAMETER:: FICH=125
 INTEGER, PARAMETER:: FICH2=126
 DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
-INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4
+INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4, compteur6,compteur8,compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, S1, S2, V1, V2, Slat1, Slat2, Slat3
 DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, compteur3, tconsigne,tu, tempsf, trefroi
+DOUBLE PRECISION:: tu1, tu2, tu3, tu4, tu5, duree2, duree3, duree4, duree5, compteur5,compteur7,compteur9,compteur11
 DOUBLE PRECISION, DIMENSION (:), ALLOCATABLE:: T1, T2
 
 !-----------------------------------------------------------------------------------------
@@ -36,6 +37,13 @@ compteur=0
 compteur2=0
 compteur3=0
 compteur4=0
+compteur5=0
+compteur6=0
+compteur7=0
+compteur8=0
+compteur9=0
+compteur10=0
+compteur11=0
 attente=0  !Par défaut indique que la température seuil n'a pas été atteinte
 
 OPEN(FICH2,FILE="result_PDC.txt", ACTION="WRITE", STATUS="UNKNOWN");
@@ -79,15 +87,15 @@ SUBROUTINE Calcul()
     DO WHILE (temps<duree) !Condition d'arrêt
 
       DO m=1,Mt
-
+          !Flux gauche
           IF (m>1) THEN
             F1=S1*lambda1*(T1(m-1)-T1(m))/dx
             F3=S2*lambda2*(T2(m-1)-T2(m))/dx
           ELSE
-            F1=2*S1*lambda1*(Tprep-T1(1))/dx
-            F3=2*S2*lambda2*(Tprep-T2(1))/dx
+            F1=2*S1*lambda1*(Tprep-T1(m))/dx
+            F3=2*S2*lambda2*(Tprep-T2(m))/dx
           END IF
-
+          !Flux droit
           IF (m<Mt) THEN
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
@@ -115,28 +123,27 @@ SUBROUTINE Calcul()
 
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
-      !Condition pour récupérer le temps d'attente pour atteindre Tconsigne
-      IF (T1(Mt)>Tconsigne .AND. compteur2==0) THEN
-          attente=temps
-          compteur2=1
+      !Conditions définir le profil de puisage
+      IF (temps>duree2 .AND. temps<duree3) THEN
+        vitesse=0.9
+        CALL profil(tu2,compteur4,compteur5)
+        PRINT*, compteur4,compteur5
+      ELSE IF (temps>duree3 .AND. temps<duree4) THEN
+        vitesse=0.9
+        CALL profil(tu3,compteur6,compteur7)
+        PRINT*, 3
+      ELSE IF (temps>duree4 .AND. temps<duree5) THEN
+        vitesse=0.9
+        CALL profil(tu4,compteur8,compteur9)
+        PRINT*, 4
+      ELSE IF (temps>duree5) THEN
+        vitesse=0.9
+        CALL profil(tu5,compteur10,compteur11)
+        PRINT*, 5
+      ELSE
+        CALL profil(tu1,compteur2,compteur3)
+        PRINT*, 1
       END IF
-
-      !Condition pour compter le temps d'utilisation
-      IF (T1(Mt)>Tconsigne) THEN
-          compteur3=compteur3+dt
-      END IF
-
-      !Condition pour couper l'ecoulement à Tutilisation
-      IF (compteur3>tu) THEN
-        vitesse=0
-      END IF
-
-      !Condition pour connaitre le temps de refroidissement
-      IF(T1(Mt)<Trefroi .AND. compteur4==0 .AND. compteur2==1) THEN
-        compteur4=1
-        tempsf=temps-attente-tu
-      END IF
-
       temps=temps+dt
       compteur=compteur+dt
 
@@ -144,7 +151,7 @@ SUBROUTINE Calcul()
       !						Ecriture de certain résultats dans un fichier
       !-------------------------------------------------------------------------------------
       IF (compteur>tsauvegarde-dt .AND. compteur<=tsauvegarde+dt) THEN
-        nb=nb+1 ! nombre de données sauvegardées
+        !nb=nb+1 ! nombre de données sauvegardées
         CALL export()
         compteur=0
         !PRINT*, "F1=",F1,"F3=",F3,"F2=",F2,"F4=",F4,"F5=",F5,"F6=",F6
@@ -154,11 +161,33 @@ SUBROUTINE Calcul()
     !--------------FIN DE LA BOUCLE DE TEMPS---------------------
 END SUBROUTINE
 
+SUBROUTINE profil(tu,compt,compt2)
+  IMPLICIT NONE
+  INTEGER:: compt
+  DOUBLE PRECISION:: tu, compt2
+
+  !Condition pour récupérer le temps d'attente pour atteindre Tconsigne
+  IF (T1(Mt)>Tconsigne .AND. compt==0) THEN
+    attente=temps
+    compt=1
+  END IF
+
+  !Condition pour compter le temps d'utilisation
+  IF (T1(Mt)>Tconsigne) THEN
+    compt2=compt2+dt
+  END IF
+
+  !Condition pour couper l'ecoulement à Tutilisation1
+  IF (compt2>tu) THEN
+    vitesse=0
+  END IF
+END SUBROUTINE
+
 SUBROUTINE load()
 	IMPLICIT NONE
 
 	! Je ne controle pas le succés donc le programme s'arrêtera en cas de problème
-	OPEN(FICH,FILE="donnees_PDC.f90", ACTION="READ");
+	OPEN(FICH,FILE="donnees_PDC_profil.f90", ACTION="READ");
 
 	! ------------------------------------------------------------------------------------
 	! Lecture des données globales
@@ -196,7 +225,15 @@ SUBROUTINE load()
 
   !Température consigne Temps d'utilisation
   READ(FICH,*)Tconsigne
-  READ(FICH,*)Tu
+  READ(FICH,*)Tu1
+  READ(FICH,*)Tu2
+  READ(FICH,*)Tu3
+  READ(FICH,*)Tu4
+  READ(FICH,*)Tu5
+  READ(FICH,*)duree2
+  READ(FICH,*)duree3
+  READ(FICH,*)duree4
+  READ(FICH,*)duree5
   READ(FICH,*)Trefroi
 
 	CLOSE(FICH)
@@ -223,11 +260,9 @@ SUBROUTINE export()
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données
   ! ------------------------------------------------------------------------------------
-    WRITE(FICH2,*) 'temps=', temps
+    !WRITE(FICH2,*) 'temps=', temps
     !WRITE(FICH2,*) 'temps=', temps, 'Valeur n°', nb, 'au niveau de l épaisseur'
-    DO i=1,Mt
-      WRITE(FICH2,*) i*dx,",",T1(i),",",T2(i),","
-    END DO
+    WRITE(FICH2,*) temps,T1(Mt),T2(Mt)
 
   CLOSE(FICH2)
 END SUBROUTINE export

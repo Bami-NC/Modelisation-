@@ -4,9 +4,9 @@
 0.002   !épaisseur du PER [m]
 0.008   !épaisseur de l'isolant XPS[m]
 
-500000  !Nombre de pas de temps
-10800   !durée de simulation [s]
-50      !Temps de sauvegarde [s]
+1200000  !Nombre de pas de temps
+22000    !durée de simulation [s]
+100      !Temps de sauvegarde [s]
 
 0.9     !vitesse dans la conduite [m/s]
 998     !masse volumique moyenne de l'ECS (à 40°C) [kg/m3]
@@ -24,13 +24,21 @@
 65      !Température du préparateur [°C]
 
 40      !Température souhaitée en sortie de la conduite [°C]
-96      !Temps d'utilisation de l'ECS [s] 
+96      !Temps d'utilisation 1 de l'ECS [s]
+60      !Temps d'utilisation 2 de l'ECS [s]
+204     !Temps d'utilisation 3 de l'ECS [s]
+138     !Temps d'utilisation 4 de l'ECS [s]
+30      !Temps d'utilisation 1 de l'ECS [s]
+3600    !durée 2 [s]
+9000    !durée 3 [s]
+16200   !durée 4 [s]
+19800   !durée 5 [s]
 22      !Température considérée comme froide
 
 0.005   !épaisseur du MCP[m]
-0.5     !Conductivité du MCP (à 30°C)[W/m.K]
-1100    !Masse volumique du MCP solide/liquide [kg/m3]
-3000    !Capacité calorifique solide du MCP [J/kg.K]
-2500    !Capacité calorifique liquide du MCP [J/kg.K]
-29.8    !Température de fusion [°C]
-218000  !Enthalpie de fusion [J/kg]
+0.16     !Conductivité du MCP (à 30°C)[W/m.K]
+930     !Masse volumique du MCP solide/liquide [kg/m3]
+1760    !Capacité calorifique solide du MCP [J/kg.K]
+2270    !Capacité calorifique liquide du MCP [J/kg.K]
+42      !Température de fusion [°C]
+211600  !Enthalpie de fusion [J/kg]

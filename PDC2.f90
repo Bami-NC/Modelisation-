@@ -5,15 +5,16 @@ IMPLICIT NONE
 !-----------------------------------------------------------------------------------------
 !						       Déclaration des variables
 !-----------------------------------------------------------------------------------------
-INTEGER, PARAMETER:: FICH=127
+INTEGER, PARAMETER:: FICH=148
 INTEGER, PARAMETER:: FICH2=128
 DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
-INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2
+INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4, compteur6, compteur8, compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, epaisseurMCP, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
 DOUBLE PRECISION:: rhoMCP, CS, CL,TF, LF, HG
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, lambdaMCP, S1, S2, S3, V1, V2,V3, Slat1, Slat2, Slat3,Slat4
-DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10
+DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10 , Tconsigne, Trefroi
+DOUBLE PRECISION:: tu1, tu2, tu3, tu4, tu5, duree2, duree3, duree4, duree5, compteur3, compteur5,compteur7,compteur9,compteur11
 DOUBLE PRECISION, DIMENSION (:), ALLOCATABLE:: T1, T2, T3,h, Y
 
 !-----------------------------------------------------------------------------------------
@@ -38,6 +39,15 @@ nb=0
 temps=0
 compteur=0
 compteur2=0
+compteur3=0
+compteur4=0
+compteur5=0
+compteur6=0
+compteur7=0
+compteur8=0
+compteur9=0
+compteur10=0
+compteur11=0
 attente=0  !Par défaut indique que la température seuil n'a pas été atteinte
 
 OPEN(FICH2,FILE="result_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN");
@@ -61,7 +71,7 @@ PRINT*, "en un temps dt n'est pas vérifiée."
 CALL Calcul()
 PRINT*,'Calcul.................................OK'
 !Temps d'attente pour atteindre la valeur consigne
-PRINT*, "Pour obtenir une température en sortie de 28°C on devra attendre", anint (attente ) ,"s"
+PRINT*, "Pour obtenir une température en sortie de 28°C on devra attendre", attente ,"s"
 PRINT*, "(Si 0s est affiché c'est que la température n'est pas atteinte durant ce temps de simulation)."
 !-----------------------------------------------------------------------------------------
 !						                 Exportation
@@ -83,23 +93,23 @@ SUBROUTINE Calcul()
     DO WHILE (temps<duree) !Condition d'arrêt
 
       DO m=1,Mt
-
+          !Flux gauches
           IF (m>1) THEN
             F1=S1*lambda1*(T1(m-1)-T1(m))/dx
             F3=S2*lambda2*(T2(m-1)-T2(m))/dx
             F9=S3*lambdaMCP*(T3(m-1)-T3(m))/dx
           ELSE
-            F1=2*S1*lambda1*(Tprep-T1(1))/dx
-            F3=2*S2*lambda2*(Tprep-T2(1))/dx
-            F9=2*S3*lambdaMCP*(Tprep-T3(1))/dx
+            F1=2*S1*lambda1*(Tprep-T1(m))/dx    !Attention convection
+            F3=2*S2*lambda2*(Tprep-T2(m))/dx
+            F9=2*S3*lambdaMCP*(Tprep-T3(m))/dx
           END IF
-
+          !Flux droits
           IF (m<Mt) THEN
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
             F10=S3*lambdaMCP*(T2(m+1)-T3(m))/dx
           ELSE
-            F2=2*S1*lambda1*(Tamb-T1(Mt))/dx
+            F2=2*S1*lambda1*(Tamb-T1(Mt))/dx    !Attention convection
             F4=2*S2*lambda2*(Tamb-T2(Mt))/dx
             F10=2*S3*lambdaMCP*(Tamb-T3(Mt))/dx
           END IF
@@ -117,7 +127,7 @@ SUBROUTINE Calcul()
               F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
           END IF
 
-          F8=Slat2*(T2(m)-T3(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP))
+          F8=Slat2*(T2(m)-T3(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP)) !Prendre ln
 
           !Bilan sur le PER
           T2(m)=dt*(F3+F4+F6-F8)/(rhop*Cper*V2)+T2(m)
@@ -132,9 +142,26 @@ SUBROUTINE Calcul()
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
 
-      IF (T1(Mt)>28 .AND. compteur2==0) THEN
-          attente=temps
-          compteur2=1
+      !Conditions définir le profil de puisage
+      IF (temps>duree2 .AND. temps<duree3) THEN
+        vitesse=0.9
+        CALL profil(tu2,compteur4,compteur5)
+        PRINT*, compteur4,compteur5
+      ELSE IF (temps>duree3 .AND. temps<duree4) THEN
+        vitesse=0.9
+        CALL profil(tu3,compteur6,compteur7)
+        PRINT*, 3
+      ELSE IF (temps>duree4 .AND. temps<duree5) THEN
+        vitesse=0.9
+        CALL profil(tu4,compteur8,compteur9)
+        PRINT*, 4
+      ELSE IF (temps>duree5) THEN
+        vitesse=0.9
+        CALL profil(tu5,compteur10,compteur11)
+        PRINT*, 5
+      ELSE
+        CALL profil(tu1,compteur2,compteur3)
+        PRINT*, 1
       END IF
 
       temps=temps+dt
@@ -148,11 +175,33 @@ SUBROUTINE Calcul()
         CALL export()
         compteur=0
         !PRINT*, "F1=",F1,"F3=",F3,"F2=",F2,"F4=",F4,"F5=",F5,"F6=",F6
-        PRINT*, "F8=",F8,"F9=",F9,"F10=",F10
+        !PRINT*, "F8=",F8,"F9=",F9,"F10=",F10
       END IF
 
     END DO
     !--------------FIN DE LA BOUCLE DE TEMPS---------------------
+END SUBROUTINE
+
+SUBROUTINE profil(tu,compt,compt2)
+  IMPLICIT NONE
+  INTEGER:: compt
+  DOUBLE PRECISION:: tu, compt2
+
+  !Condition pour récupérer le temps d'attente pour atteindre Tconsigne
+  IF (T1(Mt)>Tconsigne .AND. compt==0) THEN
+    attente=temps
+    compt=1
+  END IF
+
+  !Condition pour compter le temps d'utilisation
+  IF (T1(Mt)>Tconsigne) THEN
+    compt2=compt2+dt
+  END IF
+
+  !Condition pour couper l'ecoulement à Tutilisation1
+  IF (compt2>tu) THEN
+    vitesse=0
+  END IF
 END SUBROUTINE
 
 FUNCTION calcH(T)
@@ -211,7 +260,7 @@ SUBROUTINE load()
 	IMPLICIT NONE
 
 	! Je ne controle pas le succés donc le programme s'arrêtera en cas de problème
-	OPEN(FICH,FILE="donnees_PDC.f90", ACTION="READ");
+	OPEN(FICH,FILE="donnees_PDC_profil.f90", ACTION="READ");
 
 	! ------------------------------------------------------------------------------------
 	! Lecture des données globales
@@ -247,6 +296,19 @@ SUBROUTINE load()
   READ(FICH,*) Tamb
   READ(FICH,*) Tprep
 
+  !Température consigne Temps d'utilisation
+  READ(FICH,*)Tconsigne
+  READ(FICH,*)Tu1
+  READ(FICH,*)Tu2
+  READ(FICH,*)Tu3
+  READ(FICH,*)Tu4
+  READ(FICH,*)Tu5
+  READ(FICH,*)duree2
+  READ(FICH,*)duree3
+  READ(FICH,*)duree4
+  READ(FICH,*)duree5
+  READ(FICH,*)Trefroi
+
   !Propriétés du MCP
   READ(FICH,*)epaisseurMCP
   READ(FICH,*)lambdaMCP
@@ -255,7 +317,6 @@ SUBROUTINE load()
 	READ(FICH,*)CL
 	READ(FICH,*)TF
 	READ(FICH,*)LF
-	READ(FICH,*)HG
 
 	CLOSE(FICH)
 END SUBROUTINE load
@@ -279,16 +340,18 @@ END SUBROUTINE Discretisation
 SUBROUTINE export()
 	IMPLICIT NONE
 
-	OPEN(FICH2,FILE="result_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+	OPEN(FICH2,FILE="result_PDC2sortie.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données
   ! ------------------------------------------------------------------------------------
 
-    WRITE(FICH2,*) 'temps=', temps
-    DO i=1,Mt
-      WRITE(FICH2,*) i*dx, T1(i), T2(i), T3(i)
-    END DO
+    !WRITE(FICH2,*) 'temps=', temps
+    !DO i=1,Mt
+    !  WRITE(FICH2,*) i*dx, T1(i), T2(i), T3(i)
+    !END DO
+
+    WRITE(FICH2,*) temps, T1(Mt), T2(Mt), T3(Mt)
 
   CLOSE(FICH2)
 END SUBROUTINE export
