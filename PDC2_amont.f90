@@ -11,7 +11,7 @@ DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
 INTEGER:: i, j, m, Mt, Nt, n, nb, compteur2, compteur4,compteur6,compteur8,compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, epaisseurMCP, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
-DOUBLE PRECISION:: rhoMCP, CS, CL,TF, LF, HG , moitie
+DOUBLE PRECISION:: rhoMCP, CS, CL,TF, LF, HG , moitie, Rcm, Rci, Rcp, Tparoi
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, lambdaMCP, S1, S2, S3, V1, V2,V3, Slat1, Slat2, Slat3,Slat4
 DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, compteur3, tconsigne,tu, tempsf, trefroi
 DOUBLE PRECISION:: tu1, tu2, tu3, tu4, tu5, duree2, duree3, duree4, duree5, compteur5,compteur7,compteur9,compteur11
@@ -28,7 +28,7 @@ PRINT*,'Chargement des données.................OK'
 moitie=Mt/2
 ALLOCATE(T1(1:Mt)) !On stocke les temperatures dans une matrice
 ALLOCATE(T2(1:Mt)) !On stocke les temperatures dans une matrice
-ALLOCATE(T3(1:nint(moitie)))
+ALLOCATE(T3(1:Mt))
 ALLOCATE(h(1:nint(moitie)))
 ALLOCATE(Y(1:nint(moitie)))
 !Etat refroidi: toute la conduite est à Tambiant (K)
@@ -36,6 +36,7 @@ T1(:)=Tamb
 T2(:)=Tamb
 T3(:)=Tamb
 dt=duree/Nt
+Tparoi=30
 nb=0
 temps=0
 compteur=0
@@ -55,7 +56,7 @@ OPEN(FICH2,FILE="result_PDC2_amont.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2,*)
 CLOSE(FICH2)
 
-OPEN(FICH2+1,FILE="resultsortie_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN");
+OPEN(FICH2+1,FILE="resultsortie2_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2+1,*)
 CLOSE(FICH2+1)
 !-----------------------------------------------------------------------------------------
@@ -105,8 +106,8 @@ SUBROUTINE Calcul()
             F9=S3*lambdaMCP*(T3(m-1)-T3(m))/dx
           ELSE
             F1=2*S1*lambda1*(Tprep-T1(1))/dx
-            F3=2*S2*lambda2*(Tprep-T2(1))/dx
-            F9=2*S3*lambdaMCP*(Tprep-T3(1))/dx
+            F3=2*S2*lambda2*(Tparoi-T2(m))/dx   !en contact avec la paroi du préparateur
+            F9=2*S3*lambdaMCP*(Tparoi-T3(m))/dx
           END IF
 
           IF (m<nint(moitie)) THEN
@@ -116,15 +117,16 @@ SUBROUTINE Calcul()
           ELSE
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
-            F10=2*S3*lambdaMCP*(Tamb-T3(m))/dx !On considere MCP en contact avec isolant
+            F10=(Tamb-T3(Mt))/(dx/(2*lambdaMCP*S3)+dx/(lambda3*Slat3)) !en contact avec l'isolant
           END IF
 
           !Flux conducto-convectifs
           F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
           !Flux avec la résistance cylindrique correspondant à l'isolant
-          F7=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambdaMCP*dx)
-          F7=(T3(m)-Tamb)/(1/(hair*Slat3)+F7)
+          Rcm=log((rayon+epaisseur2+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP/2))/(2*Pi*lambdaMCP*dx)
+          Rci=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambda3*dx)
+          F7=(T3(m)-Tamb)/(Rcm+Rci+1/(hair*Slat3))
 
           IF (m==1) THEN
               F5=vitesse*rho*S1*Ceau*(Tprep-T1(1))
@@ -132,7 +134,9 @@ SUBROUTINE Calcul()
               F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
           END IF
 
-          F8=Slat2*(T2(m)-T3(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP))
+          Rcp=log((rayon+epaisseur2)/(rayon+epaisseur2/2))/(2*Pi*lambda2*dx)
+          Rcm=log((rayon+epaisseur2+epaisseurMCP/2)/(rayon+epaisseur2))/(2*Pi*lambda3*dx)
+          F8=(T2(m)-T3(m))/(Rcp+Rcm)
 
           !Bilan sur le PER
           T2(m)=dt*(F3+F4+F6-F8)/(rhop*Cper*V2)+T2(m)
@@ -158,15 +162,17 @@ SUBROUTINE Calcul()
           F2=S1*lambda1*(T1(m+1)-T1(m))/dx
           F4=S2*lambda2*(T2(m+1)-T2(m))/dx
         ELSE
-          F2=2*S1*lambda1*(Tamb-T1(m))/dx
-          F4=2*S2*lambda2*(Tamb-T2(m))/dx
+          F2=(Tamb-T1(Mt))/(dx/(2*lambda1*S1)+1/(hair*S1))  !Attention convection
+          F4=(Tamb-T2(Mt))/(dx/(2*lambda2*S2)+1/(hair*S2))
         END IF
 
         !Flux conducto-convectifs
         F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
         !Flux avec la résistance cylindrique correspondant à l'isolant
-        F7=(T2(m)-Tamb)/(1/(hair*Slat3)+log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx))
+        Rcp=log((rayon+epaisseur2)/(rayon+epaisseur2/2))/(2*pi*lambda2*dx)
+        Rci=log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx)
+        F7=(T2(m)-Tamb)/(Rcp+Rci+1/(hair*Slat3))
 
         F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
 
@@ -175,32 +181,34 @@ SUBROUTINE Calcul()
         !Bilan sur l'écoulement
         T1(m)=dt*(F1+F2+F5-F6)/(rho*Ceau*V1)+T1(m)
 
+        T3(m)=0 !Pour pouvoir tracer sur GLE
+
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
-      PRINT*, temps, duree2
       !Conditions définir le profil de puisage
-      IF (temps>duree2 .AND. temps<duree3) THEN
-        vitesse=0.9
-        CALL profil(tu2,compteur4,compteur5)
-        PRINT*, compteur4,compteur5
-      ELSE IF (temps>duree3 .AND. temps<duree4) THEN
-        vitesse=0.9
-        CALL profil(tu3,compteur6,compteur7)
-        PRINT*, 3
-      ELSE IF (temps>duree4 .AND. temps<duree5) THEN
-        vitesse=0.9
-        CALL profil(tu4,compteur8,compteur9)
-        PRINT*, 4
-      ELSE IF (temps>duree5) THEN
-        vitesse=0.9
-        CALL profil(tu5,compteur10,compteur11)
-        PRINT*, 5
-      ELSE
-        CALL profil(tu1,compteur2,compteur3)
-        PRINT*, 1
-      END IF
+      !IF (temps>duree2 .AND. temps<duree3) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu2,compteur4,compteur5)
+      !  PRINT*, compteur4,compteur5
+      !ELSE IF (temps>duree3 .AND. temps<duree4) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu3,compteur6,compteur7)
+      !  PRINT*, 3
+      !ELSE IF (temps>duree4 .AND. temps<duree5) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu4,compteur8,compteur9)
+      !  PRINT*, 4
+      !ELSE IF (temps>duree5) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu5,compteur10,compteur11)
+      !  PRINT*, 5
+      !ELSE
+      !  CALL profil(tu1,compteur2,compteur3)
+      !  PRINT*, 1
+      !END IF
 
       !PRINT*, vitesse
+      CALL profil(tu1,compteur2,compteur3)
       temps=temps+dt
       compteur=compteur+dt
 
@@ -391,17 +399,15 @@ SUBROUTINE export()
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données pour obtenir T(x)
   ! ------------------------------------------------------------------------------------
-
-    WRITE(FICH2,*) 'temps=', temps
-    DO i=1,nint(moitie)
+   IF(temps>1000 .AND. temps<1030) THEN
+    !WRITE(FICH2,*) 'temps=', temps
+    DO i=1,Mt
       WRITE(FICH2,*) i*dx, T1(i), T2(i), T3(i)
     END DO
-    DO i=nint(moitie),Mt
-      WRITE(FICH2,*) i*dx, T1(i), T2(i)
-    END DO
+  END IF
   CLOSE(FICH2)
 
-  OPEN(FICH2+1,FILE="resultsortie_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+  OPEN(FICH2+1,FILE="resultsortie2_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données pour obtenir T(t)

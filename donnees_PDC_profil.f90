@@ -4,7 +4,7 @@
 0.002   !épaisseur du PER [m]
 0.008   !épaisseur de l'isolant XPS[m]
 
-380000   !Nombre de pas de temps
+500000   !Nombre de pas de temps
 18000    !durée de simulation [s]
 20       !Temps de sauvegarde [s]
 
@@ -24,7 +24,7 @@
 65      !Température du préparateur [°C]
 
 40      !Température souhaitée en sortie de la conduite [°C]
-60     !Temps d'utilisation 1 de l'ECS [s]
+600     !Temps d'utilisation 1 de l'ECS [s]
 0       !Temps d'utilisation 2 de l'ECS [s]
 0       !Temps d'utilisation 3 de l'ECS [s]
 0       !Temps d'utilisation 4 de l'ECS [s]
@@ -35,7 +35,7 @@
 0       !durée 5 [s]
 22      !Température considérée comme froide
 
-0.005   !épaisseur du MCP[m]
+0.002   !épaisseur du MCP[m]
 0.2     !Conductivité du MCP (à 30°C)[W/m.K]
 1100     !Masse volumique du MCP solide/liquide [kg/m3]
 3000    !Capacité calorifique solide du MCP [J/kg.K]

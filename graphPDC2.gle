@@ -8,7 +8,7 @@ xtitle "t (s)" hei 0.5 dist 0.4
 
 ytitle "Température (°C)" hei 0.35 dist 0.35
 
-data "result_PDC.txt"
+data "resultsortie2_PDC2.txt"
 
 key pos br compact
 
@@ -16,15 +16,18 @@ d1 line color red
 
 d2 line color blue
 
-xaxis min 0 max 22000
+d3 line color green
+
+xaxis min 0 max 18000
 yaxis min 18 max 80
 
-title "Température en sortie de conduite selon le profil"
+title "Température en sortie de conduite 10min MCP en aval"
 
 begin key
   position tr
   offset 0.2 0.2
   text "Température du PER" fill blue
   text "Température de l'ECS"  fill red
+  text "Température de la paraffine " fill green
 end key
 end graph
