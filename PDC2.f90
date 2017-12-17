@@ -10,10 +10,10 @@ INTEGER, PARAMETER:: FICH2=128
 DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
 INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4, compteur6, compteur8, compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, epaisseurMCP, tsauvegarde, compteur, temps, dt, duree,dx
-DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
+DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente, Tparoi
 DOUBLE PRECISION:: rhoMCP, CS, CL,TF, LF, HG
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, lambdaMCP, S1, S2, S3, V1, V2,V3, Slat1, Slat2, Slat3,Slat4
-DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10 , Tconsigne, Trefroi
+DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10 , Tconsigne, Trefroi, Rcp, Rcm, Rci
 DOUBLE PRECISION:: tu1, tu2, tu3, tu4, tu5, duree2, duree3, duree4, duree5, compteur3, compteur5,compteur7,compteur9,compteur11
 DOUBLE PRECISION, DIMENSION (:), ALLOCATABLE:: T1, T2, T3,h, Y
 
@@ -35,6 +35,7 @@ T1(:)=Tamb
 T2(:)=Tamb
 T3(:)=Tamb
 dt=duree/Nt
+Tparoi=30 !Température de la paroi du préparateur
 nb=0
 temps=0
 compteur=0
@@ -99,9 +100,9 @@ SUBROUTINE Calcul()
             F3=S2*lambda2*(T2(m-1)-T2(m))/dx
             F9=S3*lambdaMCP*(T3(m-1)-T3(m))/dx
           ELSE
-            F1=2*S1*lambda1*(Tprep-T1(m))/dx    !Attention convection
-            F3=2*S2*lambda2*(Tprep-T2(m))/dx
-            F9=2*S3*lambdaMCP*(Tprep-T3(m))/dx
+            F1=2*S1*lambda1*(Tprep-T1(m))/dx    !en contact avec le préparateur
+            F3=2*S2*lambda2*(Tparoi-T2(m))/dx   !en contact avec la paroi du préparateur
+            F9=2*S3*lambdaMCP*(Tparoi-T3(m))/dx
           END IF
           !Flux droits
           IF (m<Mt) THEN
@@ -109,17 +110,18 @@ SUBROUTINE Calcul()
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
             F10=S3*lambdaMCP*(T2(m+1)-T3(m))/dx
           ELSE
-            F2=2*S1*lambda1*(Tamb-T1(Mt))/dx    !Attention convection
-            F4=2*S2*lambda2*(Tamb-T2(Mt))/dx
-            F10=2*S3*lambdaMCP*(Tamb-T3(Mt))/dx
+            F2=(Tamb-T1(Mt))/(dx/(2*lambda1*S1)+1/(hair*S1))  !Attention convection
+            F4=(Tamb-T2(Mt))/(dx/(2*lambda2*S2)+1/(hair*S2))
+            F10=(Tamb-T3(Mt))/(dx/(2*lambdaMCP*S3)+1/(hair*S3))
           END IF
 
           !Flux conducto-convectifs
           F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
           !Flux avec la résistance cylindrique correspondant à l'isolant
-          F7=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambdaMCP*dx)
-          F7=(T3(m)-Tamb)/(1/(hair*Slat3)+F7)
+          Rcm=log((rayon+epaisseur2+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP/2))/(2*Pi*lambdaMCP*dx)
+          Rci=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambda3*dx)
+          F7=(T3(m)-Tamb)/(Rcm+Rci+1/(hair*Slat3))
 
           IF (m==1) THEN
               F5=vitesse*rho*S1*Ceau*(Tprep-T1(1))
@@ -127,7 +129,9 @@ SUBROUTINE Calcul()
               F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
           END IF
 
-          F8=Slat2*(T2(m)-T3(m))/(epaisseur2/(2*lambda2)+epaisseurMCP/(2*lambdaMCP)) !Prendre ln
+          Rcp=log((rayon+epaisseur2)/(rayon+epaisseur2/2))/(2*Pi*lambda2*dx)
+          Rcm=log((rayon+epaisseur2+epaisseurMCP/2)/(rayon+epaisseur2))/(2*Pi*lambda3*dx)
+          F8=(T2(m)-T3(m))/(Rcp+Rcm)
 
           !Bilan sur le PER
           T2(m)=dt*(F3+F4+F6-F8)/(rhop*Cper*V2)+T2(m)
@@ -141,28 +145,23 @@ SUBROUTINE Calcul()
 
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
-
+      CALL profil(tu1,compteur2,compteur3)
       !Conditions définir le profil de puisage
-      IF (temps>duree2 .AND. temps<duree3) THEN
-        vitesse=0.9
-        CALL profil(tu2,compteur4,compteur5)
-        PRINT*, compteur4,compteur5
-      ELSE IF (temps>duree3 .AND. temps<duree4) THEN
-        vitesse=0.9
-        CALL profil(tu3,compteur6,compteur7)
-        PRINT*, 3
-      ELSE IF (temps>duree4 .AND. temps<duree5) THEN
-        vitesse=0.9
-        CALL profil(tu4,compteur8,compteur9)
-        PRINT*, 4
-      ELSE IF (temps>duree5) THEN
-        vitesse=0.9
-        CALL profil(tu5,compteur10,compteur11)
-        PRINT*, 5
-      ELSE
-        CALL profil(tu1,compteur2,compteur3)
-        PRINT*, 1
-      END IF
+      !IF (temps>duree2 .AND. temps<duree3) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu2,compteur4,compteur5)
+      !ELSE IF (temps>duree3 .AND. temps<duree4) THEN
+      !  vitesse=0.9
+      !  CALL profil(tu3,compteur6,compteur7)
+      !ELSE IF (temps>duree4 .AND. temps<duree5) THEN
+    !    vitesse=0.9
+    !    CALL profil(tu4,compteur8,compteur9)
+    !  ELSE IF (temps>duree5) THEN
+    !    vitesse=0.9
+    !    CALL profil(tu5,compteur10,compteur11)
+    !  ELSE
+    !    CALL profil(tu1,compteur2,compteur3)
+    !  END IF
 
       temps=temps+dt
       compteur=compteur+dt
@@ -208,6 +207,14 @@ FUNCTION calcH(T)
 	IMPLICIT NONE
 	DOUBLE PRECISION, INTENT(IN) :: T
 	DOUBLE PRECISION :: calcH
+  !Dans le cas de la paraffine on définit un cp moyen entre 28-32
+  IF (T<32 .AND. T>28) THEN
+    CS=20000
+    CL=20000
+  ELSE
+    CS=3000
+    CL=2500
+  END IF
 
 	IF (T<TF) THEN
 		! SOLIDE

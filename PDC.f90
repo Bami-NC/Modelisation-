@@ -12,7 +12,7 @@ INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4, compteur6,compteur8,compt
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, S1, S2, V1, V2, Slat1, Slat2, Slat3
-DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, compteur3, tconsigne,tu, tempsf, trefroi
+DOUBLE PRECISION:: F1, F2, F3, F4, F5, F6, F7, compteur3, tconsigne,tu, tempsf, trefroi, Tparoi, Rci, Rcp
 DOUBLE PRECISION:: tu1, tu2, tu3, tu4, tu5, duree2, duree3, duree4, duree5, compteur5,compteur7,compteur9,compteur11
 DOUBLE PRECISION, DIMENSION (:), ALLOCATABLE:: T1, T2
 
@@ -31,6 +31,7 @@ ALLOCATE(T2(1:Mt)) !On stocke les temperatures dans une matrice
 T1(:)=Tamb
 T2(:)=Tamb
 dt=duree/Nt
+Tparoi=30
 nb=0
 temps=0
 compteur=0
@@ -93,22 +94,24 @@ SUBROUTINE Calcul()
             F3=S2*lambda2*(T2(m-1)-T2(m))/dx
           ELSE
             F1=2*S1*lambda1*(Tprep-T1(m))/dx
-            F3=2*S2*lambda2*(Tprep-T2(m))/dx
+            F3=2*S2*lambda2*(Tparoi-T2(m))/dx
           END IF
           !Flux droit
           IF (m<Mt) THEN
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
           ELSE
-            F2=2*S1*lambda1*(Tamb-T1(Mt))/dx
-            F4=2*S2*lambda2*(Tamb-T2(Mt))/dx
+            F2=(Tamb-T1(Mt))/(dx/(2*lambda1*S1)+1/(hair*S1))  !Attention convection
+            F4=(Tamb-T2(Mt))/(dx/(2*lambda2*S2)+1/(hair*S2))
           END IF
 
           !Flux conducto-convectifs
           F6=(T1(m)-T2(m))/(epaisseur2/(2*lambda2*Slat1)+rayon/(rayon*heau*Slat1+lambda1*Slat1))
 
           !Flux avec la résistance cylindrique correspondant à l'isolant
-          F7=(T2(m)-Tamb)/(1/(hair*Slat3)+log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx))
+          Rcp=log((rayon+epaisseur2)/(rayon+epaisseur2/2))/(2*pi*lambda2*dx)
+          Rci=log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx)
+          F7=(T2(m)-Tamb)/(Rcp+Rci+1/(hair*Slat3))
 
           IF (m==1) THEN
               F5=vitesse*rho*S1*Ceau*(Tprep-T1(1))
