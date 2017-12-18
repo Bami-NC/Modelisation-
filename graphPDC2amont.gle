@@ -4,11 +4,11 @@ begin graph
 
 size 18 10
 
-xtitle "Longueur (m)" hei 0.5 dist 0.4
+xtitle "Temps (s)" hei 0.5 dist 0.4
 
 ytitle "Température (°C)" hei 0.35 dist 0.35
 
-data "result_PDC2_aval.txt"
+data "result_PDC2amont_temps.txt"
 
 key pos br compact
 
@@ -18,10 +18,10 @@ d2 line color blue
 
 d3 line color green
 
-xaxis min 0 max 5
+xaxis min 0 max 22000
 yaxis min 18 max 80
 
-title "Températures dans la conduite à t=1000s"
+title "Températures en sortie avec MCP en amont"
 
 begin key
   position tr

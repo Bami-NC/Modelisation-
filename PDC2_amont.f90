@@ -8,7 +8,7 @@ IMPLICIT NONE
 INTEGER, PARAMETER:: FICH=144
 INTEGER, PARAMETER:: FICH2=150
 DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
-INTEGER:: i, j, m, Mt, Nt, n, nb, compteur2, compteur4,compteur6,compteur8,compteur10
+INTEGER:: i, j, m, Mt, Nt, n, nb, compteur0, compteur2, compteur4,compteur6,compteur8,compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, epaisseurMCP, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
 DOUBLE PRECISION:: rhoMCP, CS, CL,TF, LF, HG , moitie, Rcm, Rci, Rcp, Tparoi
@@ -26,8 +26,8 @@ PRINT*,'Chargement des données.................OK'
 !						       Initialisation des variables
 !-----------------------------------------------------------------------------------------
 moitie=Mt/2
-ALLOCATE(T1(1:Mt)) !On stocke les temperatures dans une matrice
-ALLOCATE(T2(1:Mt)) !On stocke les temperatures dans une matrice
+ALLOCATE(T1(1:Mt))
+ALLOCATE(T2(1:Mt))
 ALLOCATE(T3(1:Mt))
 ALLOCATE(h(1:nint(moitie)))
 ALLOCATE(Y(1:nint(moitie)))
@@ -39,6 +39,7 @@ dt=duree/Nt
 Tparoi=30
 nb=0
 temps=0
+compteur0=0
 compteur=0
 compteur2=0
 compteur3=0
@@ -52,11 +53,11 @@ compteur10=0
 compteur11=0
 attente=0  !Par défaut indique que la température seuil n'a pas été atteinte
 
-OPEN(FICH2,FILE="result_PDC2_amont.txt", ACTION="WRITE", STATUS="UNKNOWN");
+OPEN(FICH2,FILE="result_PDC2amont_espace.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2,*)
 CLOSE(FICH2)
 
-OPEN(FICH2+1,FILE="resultsortie2_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN");
+OPEN(FICH2+1,FILE="result_PDC2amont_temps.txt", ACTION="WRITE", STATUS="UNKNOWN");
   WRITE(FICH2+1,*)
 CLOSE(FICH2+1)
 !-----------------------------------------------------------------------------------------
@@ -76,9 +77,10 @@ PRINT*, "en un temps dt n'est pas vérifiée."
 CALL Calcul()
 PRINT*,'Calcul.................................OK'
 !Temps d'attente pour atteindre la valeur consigne
-PRINT*, "Pour obtenir une température en sortie de", Tconsigne,"°C on devra attendre", attente  ,"s"
+PRINT*, "Pour obtenir une température (pour le dernier profil) en sortie de", Tconsigne,"°C on devra attendre", attente  ,"s"
 PRINT*, "(Si 0s est affiché c'est que la température n'est pas atteinte durant ce temps de simulation)."
 PRINT*, "L'ECS est refroidi à ", Trefroi,"°C après un temps de refroidissement de ", Tempsf, "s soit ", Tempsf/60, "minutes"
+PRINT*, "(si 0s est affiché c'est qu'on n'atteint pas la temperature considérée comme froide pendant cette simulatiton)"
 !-----------------------------------------------------------------------------------------
 !						                 Exportation
 !-----------------------------------------------------------------------------------------
@@ -100,6 +102,7 @@ SUBROUTINE Calcul()
       !Avec MCP
       DO m=1,nint(moitie)
 
+          !Flux gauches
           IF (m>1) THEN
             F1=S1*lambda1*(T1(m-1)-T1(m))/dx
             F3=S2*lambda2*(T2(m-1)-T2(m))/dx
@@ -110,6 +113,7 @@ SUBROUTINE Calcul()
             F9=2*S3*lambdaMCP*(Tparoi-T3(m))/dx
           END IF
 
+          !Flux droits
           IF (m<nint(moitie)) THEN
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
@@ -117,7 +121,7 @@ SUBROUTINE Calcul()
           ELSE
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
             F4=S2*lambda2*(T2(m+1)-T2(m))/dx
-            F10=(Tamb-T3(Mt))/(dx/(2*lambdaMCP*S3)+dx/(lambda3*Slat3)) !en contact avec l'isolant
+            F10=(Tamb-T3(m))/(dx/(2*lambdaMCP*S3)+dx/(lambda3*Slat3)+1/(hair*Slat3)) !en contact avec l'isolant
           END IF
 
           !Flux conducto-convectifs
@@ -128,12 +132,14 @@ SUBROUTINE Calcul()
           Rci=log((rayon+epaisseur2+epaisseur3+epaisseurMCP)/(rayon+epaisseur2+epaisseurMCP))/(2*pi*lambda3*dx)
           F7=(T3(m)-Tamb)/(Rcm+Rci+1/(hair*Slat3))
 
+          !Flux advectif
           IF (m==1) THEN
               F5=vitesse*rho*S1*Ceau*(Tprep-T1(1))
           ELSE
               F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
           END IF
 
+          !Flux conductif entre le PER et le MCP
           Rcp=log((rayon+epaisseur2)/(rayon+epaisseur2/2))/(2*Pi*lambda2*dx)
           Rcm=log((rayon+epaisseur2+epaisseurMCP/2)/(rayon+epaisseur2))/(2*Pi*lambda3*dx)
           F8=(T2(m)-T3(m))/(Rcp+Rcm)
@@ -155,9 +161,11 @@ SUBROUTINE Calcul()
 
         Slat3=2*pi*(rayon+epaisseur2+epaisseur3)*dx
 
+        !Flux gauches
         F1=S1*lambda1*(T1(m-1)-T1(m))/dx
         F3=S2*lambda2*(T2(m-1)-T2(m))/dx
 
+        !Flux droits
         IF (m<Mt) THEN
           F2=S1*lambda1*(T1(m+1)-T1(m))/dx
           F4=S2*lambda2*(T2(m+1)-T2(m))/dx
@@ -174,6 +182,7 @@ SUBROUTINE Calcul()
         Rci=log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx)
         F7=(T2(m)-Tamb)/(Rcp+Rci+1/(hair*Slat3))
 
+        !Flux advectif
         F5=vitesse*rho*S1*Ceau*(T1(m-1)-T1(m))
 
         !Bilan sur le PER
@@ -185,30 +194,30 @@ SUBROUTINE Calcul()
 
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
-      !Conditions définir le profil de puisage
-      !IF (temps>duree2 .AND. temps<duree3) THEN
-      !  vitesse=0.9
-      !  CALL profil(tu2,compteur4,compteur5)
-      !  PRINT*, compteur4,compteur5
-      !ELSE IF (temps>duree3 .AND. temps<duree4) THEN
-      !  vitesse=0.9
-      !  CALL profil(tu3,compteur6,compteur7)
-      !  PRINT*, 3
-      !ELSE IF (temps>duree4 .AND. temps<duree5) THEN
-      !  vitesse=0.9
-      !  CALL profil(tu4,compteur8,compteur9)
-      !  PRINT*, 4
-      !ELSE IF (temps>duree5) THEN
-      !  vitesse=0.9
-      !  CALL profil(tu5,compteur10,compteur11)
-      !  PRINT*, 5
-      !ELSE
-      !  CALL profil(tu1,compteur2,compteur3)
-      !  PRINT*, 1
-      !END IF
 
-      !PRINT*, vitesse
-      CALL profil(tu1,compteur2,compteur3)
+      !Condition pour obtenir le temps de refroidissement
+      IF(T1(m)<Trefroi .AND. compteur0==0) THEN
+        tempsf=temps
+        compteur0=1
+      END IF
+
+      !Conditions pour définir le profil de puisage
+      IF (temps>duree2 .AND. temps<duree3) THEN
+        vitesse=0.9
+        CALL profil(tu2,compteur4,compteur5)
+      ELSE IF (temps>duree3 .AND. temps<duree4) THEN
+        vitesse=0.9
+        CALL profil(tu3,compteur6,compteur7)
+      ELSE IF (temps>duree4 .AND. temps<duree5) THEN
+        vitesse=0.9
+        CALL profil(tu4,compteur8,compteur9)
+      ELSE IF (temps>duree5) THEN
+        vitesse=0.9
+        CALL profil(tu5,compteur10,compteur11)
+      ELSE
+        CALL profil(tu1,compteur2,compteur3)
+      END IF
+
       temps=temps+dt
       compteur=compteur+dt
 
@@ -313,7 +322,6 @@ END SUBROUTINE
 SUBROUTINE load()
 	IMPLICIT NONE
 
-	! Je ne controle pas le succés donc le programme s'arrêtera en cas de problème
 	OPEN(FICH,FILE="donnees_PDC_profil.f90", ACTION="READ");
 
 	! ------------------------------------------------------------------------------------
@@ -394,7 +402,7 @@ END SUBROUTINE Discretisation
 SUBROUTINE export()
 	IMPLICIT NONE
 
-	OPEN(FICH2,FILE="result_PDC2_amont.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+	OPEN(FICH2,FILE="result_PDC2amont_espace.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données pour obtenir T(x)
@@ -407,7 +415,7 @@ SUBROUTINE export()
   END IF
   CLOSE(FICH2)
 
-  OPEN(FICH2+1,FILE="resultsortie2_PDC2.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
+  OPEN(FICH2+1,FILE="result_PDC2amont_temps.txt", ACTION="WRITE", STATUS="UNKNOWN", POSITION="APPEND");
 
   ! ------------------------------------------------------------------------------------
   ! Ecriture des données pour obtenir T(t)

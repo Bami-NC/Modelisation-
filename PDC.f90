@@ -8,7 +8,7 @@ IMPLICIT NONE
 INTEGER, PARAMETER:: FICH=125
 INTEGER, PARAMETER:: FICH2=126
 DOUBLE PRECISION, PARAMETER:: Pi=4*ATAN(1.D0)
-INTEGER:: i, j,m, Mt, Nt, n, nb, compteur2, compteur4, compteur6,compteur8,compteur10
+INTEGER:: i, j,m, Mt, Nt, n, nb, compteur0, compteur2, compteur4, compteur6,compteur8,compteur10
 DOUBLE PRECISION:: longueur,Rayon, epaisseur2, epaisseur3, tsauvegarde, compteur, temps, dt, duree,dx
 DOUBLE PRECISION:: Tamb, rho,rhop, Ceau, Cper, Tprep, hair, heau, vitesse, attente
 DOUBLE PRECISION:: lambda1, lambda2, lambda3, S1, S2, V1, V2, Slat1, Slat2, Slat3
@@ -24,8 +24,8 @@ PRINT*,'Chargement des données.................OK'
 !-----------------------------------------------------------------------------------------
 !						       Initialisation des variables
 !-----------------------------------------------------------------------------------------
-ALLOCATE(T1(1:Mt)) !On stocke les temperatures dans une matrice
-ALLOCATE(T2(1:Mt)) !On stocke les temperatures dans une matrice
+ALLOCATE(T1(1:Mt))
+ALLOCATE(T2(1:Mt))
 
 !Etat refroidi: toute la conduite est à Tambiant (K)
 T1(:)=Tamb
@@ -34,6 +34,7 @@ dt=duree/Nt
 Tparoi=30
 nb=0
 temps=0
+compteur0=0
 compteur=0
 compteur2=0
 compteur3=0
@@ -59,7 +60,7 @@ CALL Discretisation()
 PRINT*,'Discrétisation.........................OK'
 
 !Contrainte sur le pas de temps
-PRINT*, "Il faut:", vitesse*S1*dt, "<<", V2
+PRINT*, "Il faut:", vitesse*S2*dt, "<<", V1
 PRINT*, "Sinon l'hypothèse que la température dans l'écoulement reste constante"
 PRINT*, "en un temps dt n'est pas vérifiée."
 !-----------------------------------------------------------------------------------------
@@ -68,9 +69,10 @@ PRINT*, "en un temps dt n'est pas vérifiée."
 CALL Calcul()
 PRINT*,'Calcul.................................OK'
 !Temps d'attente pour atteindre la valeur consigne
-PRINT*, "Pour obtenir une température en sortie de", Tconsigne,"°C on devra attendre", attente  ,"s"
+PRINT*, "Pour obtenir une température (pour le dernier profil) en sortie de", Tconsigne,"°C on devra attendre", attente  ,"s"
 PRINT*, "(Si 0s est affiché c'est que la température n'est pas atteinte durant ce temps de simulation)."
 PRINT*, "L'ECS est refroidi à ", Trefroi,"°C après un temps de refroidissement de ", Tempsf, "s soit ", Tempsf/60, "minutes"
+PRINT*, "(si 0s est affiché c'est qu'on n'atteint pas la temperature considérée comme froide pendant cette simulatiton)"
 !-----------------------------------------------------------------------------------------
 !						                 Exportation
 !-----------------------------------------------------------------------------------------
@@ -88,6 +90,7 @@ SUBROUTINE Calcul()
     DO WHILE (temps<duree) !Condition d'arrêt
 
       DO m=1,Mt
+
           !Flux gauche
           IF (m>1) THEN
             F1=S1*lambda1*(T1(m-1)-T1(m))/dx
@@ -96,6 +99,7 @@ SUBROUTINE Calcul()
             F1=2*S1*lambda1*(Tprep-T1(m))/dx
             F3=2*S2*lambda2*(Tparoi-T2(m))/dx
           END IF
+
           !Flux droit
           IF (m<Mt) THEN
             F2=S1*lambda1*(T1(m+1)-T1(m))/dx
@@ -113,6 +117,7 @@ SUBROUTINE Calcul()
           Rci=log((rayon+epaisseur2+epaisseur3)/(rayon+epaisseur2))/(2*pi*lambda3*dx)
           F7=(T2(m)-Tamb)/(Rcp+Rci+1/(hair*Slat3))
 
+          !Flux advectif
           IF (m==1) THEN
               F5=vitesse*rho*S1*Ceau*(Tprep-T1(1))
           ELSE
@@ -126,27 +131,29 @@ SUBROUTINE Calcul()
 
       END DO
       !--------------FIN DE LA BOUCLE D'ESPACE----------------------
-      !Conditions définir le profil de puisage
+      !Condition pour obtenir le temps de refroidissement
+      IF(T1(m)<Trefroi .AND. compteur0==0) THEN
+        tempsf=temps
+        compteur0=1
+      END IF
+
+      !Conditions pour définir le profil de puisage
       IF (temps>duree2 .AND. temps<duree3) THEN
         vitesse=0.9
         CALL profil(tu2,compteur4,compteur5)
-        PRINT*, compteur4,compteur5
       ELSE IF (temps>duree3 .AND. temps<duree4) THEN
         vitesse=0.9
         CALL profil(tu3,compteur6,compteur7)
-        PRINT*, 3
       ELSE IF (temps>duree4 .AND. temps<duree5) THEN
         vitesse=0.9
         CALL profil(tu4,compteur8,compteur9)
-        PRINT*, 4
       ELSE IF (temps>duree5) THEN
         vitesse=0.9
         CALL profil(tu5,compteur10,compteur11)
-        PRINT*, 5
       ELSE
         CALL profil(tu1,compteur2,compteur3)
-        PRINT*, 1
       END IF
+
       temps=temps+dt
       compteur=compteur+dt
 
@@ -154,7 +161,7 @@ SUBROUTINE Calcul()
       !						Ecriture de certain résultats dans un fichier
       !-------------------------------------------------------------------------------------
       IF (compteur>tsauvegarde-dt .AND. compteur<=tsauvegarde+dt) THEN
-        !nb=nb+1 ! nombre de données sauvegardées
+        nb=nb+1 ! nombre de données sauvegardées
         CALL export()
         compteur=0
         !PRINT*, "F1=",F1,"F3=",F3,"F2=",F2,"F4=",F4,"F5=",F5,"F6=",F6
@@ -189,7 +196,6 @@ END SUBROUTINE
 SUBROUTINE load()
 	IMPLICIT NONE
 
-	! Je ne controle pas le succés donc le programme s'arrêtera en cas de problème
 	OPEN(FICH,FILE="donnees_PDC_profil.f90", ACTION="READ");
 
 	! ------------------------------------------------------------------------------------
