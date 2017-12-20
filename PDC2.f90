@@ -220,10 +220,10 @@ FUNCTION calcH(T)
 	DOUBLE PRECISION :: calcH
   !Dans le cas de la paraffine on définit un cp moyen entre 28-32
   IF (T<32 .AND. T>28) THEN
-    CS=20000
-    CL=20000
+    CS=26000
+    CL=26000
   ELSE
-    CS=3000
+    CS=3500
     CL=2500
   END IF
 

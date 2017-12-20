@@ -1,4 +1,4 @@
-30      !Nombre de maille
+20      !Nombre de maille
 0.007   !Rayon interne [m]
 5       !Longueur de la conduite [m]
 0.002   !épaisseur du PER [m]
@@ -38,7 +38,7 @@
 0.002   !épaisseur du MCP[m]
 0.2     !Conductivité du MCP (à 30°C)[W/m.K]
 1100    !Masse volumique du MCP solide/liquide [kg/m3]
-3000    !Capacité calorifique solide du MCP [J/kg.K]
+3500    !Capacité calorifique solide du MCP [J/kg.K]
 2500    !Capacité calorifique liquide du MCP [J/kg.K]
 29.8    !Température de fusion [°C]
 218000  !Enthalpie de fusion [J/kg]
